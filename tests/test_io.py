@@ -32,7 +32,20 @@ def test_blosc_layout_is_directory_of_blosc_files_plus_meta(tmp_path):
     times, labels = synthetic_train(n=1_000)
     write_blosc(tmp_path / "train", times_seconds=times, labels=labels, quantization_us=100)
     files = {p.name for p in (tmp_path / "train").iterdir()}
-    assert files == {"meta.json", "event_times_delta_ticks.blosc", "event_labels.blosc"}
+    assert files == {"meta.json", "spike_times_delta_ticks.blosc", "spike_clusters.blosc"}
+
+
+def test_blosc_cluster_ids_written_and_recovered(tmp_path):
+    times, labels = synthetic_train(n=5_000)
+    n_units = int(labels.max()) + 1
+    cluster_ids = np.arange(100, 100 + n_units, dtype=np.int32)  # arbitrary original IDs
+    write_blosc(tmp_path / "train", times_seconds=times, labels=labels, cluster_ids=cluster_ids, quantization_us=100)
+    out = read_blosc(tmp_path / "train")
+    np.testing.assert_array_equal(out["cluster_ids"], np.sort(cluster_ids))
+    assert out["cluster_spike_counts"].sum() == times.size
+    files = {p.name for p in (tmp_path / "train").iterdir()}
+    assert "cluster_ids.blosc" in files
+    assert "cluster_spike_counts.blosc" in files
 
 
 def test_blosc_extra_meta_is_preserved(tmp_path):

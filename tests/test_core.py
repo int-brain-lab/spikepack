@@ -35,7 +35,8 @@ def test_single_event_round_trips():
 def test_dtype_narrows_to_uint16_for_dense_train():
     times = synthetic_train(n=10_000, rate_hz=100.0)
     deltas, meta = encode_times(times, quantization_us=100)
-    assert meta["dtype"] == "uint16"
+    assert meta["storage_dtype"] == "uint16"
+    assert meta["fallback_used"] is False
     assert deltas.dtype == np.uint16
 
 
@@ -43,7 +44,8 @@ def test_dtype_falls_back_to_uint32_on_large_gap():
     # gap of 100 ms at 1 us ticks = 100_000 ticks, overflows uint16 (max 65535)
     times = np.asarray([0.0, 0.1, 0.100_5])
     deltas, meta = encode_times(times, quantization_us=1)
-    assert meta["dtype"] == "uint32"
+    assert meta["storage_dtype"] == "uint32"
+    assert meta["fallback_used"] is True
     recovered = decode_times(deltas, meta)
     assert np.max(np.abs(recovered - times)) <= 1e-6 + 1e-12
 
@@ -52,7 +54,8 @@ def test_dtype_falls_back_to_uint64_on_huge_gap():
     # ~5 days at 100 us ticks overflows uint32 (max ~4.29e9)
     times = np.asarray([0.0, 5 * 86_400.0])
     deltas, meta = encode_times(times, quantization_us=100)
-    assert meta["dtype"] == "uint64"
+    assert meta["storage_dtype"] == "uint64"
+    assert meta["fallback_used"] is True
     recovered = decode_times(deltas, meta)
     assert np.max(np.abs(recovered - times)) <= 50e-6 + 1e-3  # float64 tick math, generous tolerance
 
