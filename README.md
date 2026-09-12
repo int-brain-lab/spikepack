@@ -28,17 +28,17 @@ out = read_blosc("spikes")
 
 ## Documentation
 
-Full documentation is at **https://oliche.github.io/spikepack/**.
+Full documentation is at **https://int-brain-lab.github.io/spikepack/**.
 
 | Section | Contents |
 | --- | --- |
-| [Tutorial](https://oliche.github.io/spikepack/tutorials/first-compression.html) | Encode, write, and read your first spike train |
-| [How-To: quantization](https://oliche.github.io/spikepack/how-to/choose-quantization.html) | Trading fidelity for size |
-| [How-To: Blosc vs Zarr](https://oliche.github.io/spikepack/how-to/blosc-vs-zarr.html) | Picking a container format |
-| [API reference](https://oliche.github.io/spikepack/reference/) | Full public API |
-| [On-disk format](https://oliche.github.io/spikepack/reference/format.html) | Blosc-shard and Zarr layout specs |
-| [Codec design](https://oliche.github.io/spikepack/explanation/encoding.html) | Why quantize + delta-encode + shuffle |
-| [Benchmark](https://oliche.github.io/spikepack/explanation/benchmark.html) | Blosc vs Zarr, compression ratios across 11 real IBL insertions |
+| [Tutorial](https://int-brain-lab.github.io/spikepack/tutorials/first-compression.html) | Encode, write, and read your first spike train |
+| [How-To: quantization](https://int-brain-lab.github.io/spikepack/how-to/choose-quantization.html) | Trading fidelity for size |
+| [How-To: Blosc vs Zarr](https://int-brain-lab.github.io/spikepack/how-to/blosc-vs-zarr.html) | Picking a container format |
+| [API reference](https://int-brain-lab.github.io/spikepack/reference/) | Full public API |
+| [On-disk format](https://int-brain-lab.github.io/spikepack/reference/format.html) | Blosc-shard and Zarr layout specs |
+| [Codec design](https://int-brain-lab.github.io/spikepack/explanation/encoding.html) | Why quantize + delta-encode + shuffle |
+| [Benchmark](https://int-brain-lab.github.io/spikepack/explanation/benchmark.html) | Blosc vs Zarr, compression ratios across 11 real IBL insertions |
 
 ## How it works
 
@@ -50,9 +50,9 @@ Full documentation is at **https://oliche.github.io/spikepack/**.
 
 Two container formats ship the same codec: a minimal dependency-free directory-of-
 `.blosc`-files shard, and a standard Zarr group for cross-tool interoperability and
-chunked access. See [Blosc vs Zarr](https://oliche.github.io/spikepack/how-to/blosc-vs-zarr.html).
+chunked access. See [Blosc vs Zarr](https://int-brain-lab.github.io/spikepack/how-to/blosc-vs-zarr.html).
 
 ## Help and Feedback
 
 Have a question, found an issue, or want to share feedback? Please open an issue on
-[GitHub](https://github.com/oliche/spikepack/issues).
+[GitHub](https://github.com/int-brain-lab/spikepack/issues).
