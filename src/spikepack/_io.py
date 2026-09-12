@@ -31,9 +31,7 @@ def _build_arrays(
     if has_cluster_ids:
         sorted_ids = np.sort(cluster_ids).astype(np.int32)
         arrays["cluster_ids"] = sorted_ids
-        arrays["cluster_spike_counts"] = np.bincount(
-            labels, minlength=len(sorted_ids)
-        ).astype(np.int32)
+        arrays["cluster_spike_counts"] = np.bincount(labels, minlength=len(sorted_ids)).astype(np.int32)
     meta = {
         "format": FORMAT_VERSION,
         "n_events": int(deltas.size),
