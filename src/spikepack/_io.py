@@ -10,33 +10,48 @@ import numpy as np
 
 from spikepack._core import DEFAULT_QUANTIZATION_US, compress_array, decode_times, decompress_array, encode_times
 
-FORMAT_VERSION = "spikepack_v1"
+FORMAT_VERSION = "ibl_ai_agent_spike_shard_v2"
 
 
 def _build_arrays(
-    times_seconds: np.ndarray, labels: np.ndarray | None, quantization_us: int
+    times_seconds: np.ndarray,
+    labels: np.ndarray | None,
+    quantization_us: int,
+    cluster_ids: np.ndarray | None = None,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     deltas, time_meta = encode_times(times_seconds, quantization_us=quantization_us)
-    arrays = {"event_times_delta_ticks": deltas}
-    if labels is not None:
+    arrays: dict[str, np.ndarray] = {"spike_times_delta_ticks": deltas}
+    has_labels = labels is not None
+    has_cluster_ids = cluster_ids is not None and has_labels
+    if has_labels:
         labels = np.asarray(labels)
         if labels.shape[0] != deltas.shape[0]:
             raise ValueError(f"labels length {labels.shape[0]} does not match times length {deltas.shape[0]}")
-        arrays["event_labels"] = labels
+        arrays["spike_clusters"] = labels
+    if has_cluster_ids:
+        sorted_ids = np.sort(cluster_ids).astype(np.int32)
+        arrays["cluster_ids"] = sorted_ids
+        arrays["cluster_spike_counts"] = np.bincount(
+            labels, minlength=len(sorted_ids)
+        ).astype(np.int32)
     meta = {
         "format": FORMAT_VERSION,
         "n_events": int(deltas.size),
-        "has_labels": labels is not None,
+        "has_labels": has_labels,
+        "has_cluster_ids": has_cluster_ids,
         **time_meta,
     }
     return arrays, meta
 
 
 def _restore(arrays: dict[str, np.ndarray], meta: dict[str, Any]) -> dict[str, Any]:
-    times = decode_times(arrays["event_times_delta_ticks"], meta)
+    times = decode_times(arrays["spike_times_delta_ticks"], meta)
     out: dict[str, Any] = {"times": times, "meta": meta}
     if meta.get("has_labels"):
-        out["labels"] = arrays["event_labels"]
+        out["labels"] = arrays["spike_clusters"]
+    if meta.get("has_cluster_ids"):
+        out["cluster_ids"] = arrays["cluster_ids"]
+        out["cluster_spike_counts"] = arrays["cluster_spike_counts"]
     return out
 
 
@@ -48,10 +63,14 @@ def write_blosc(
     *,
     times_seconds: np.ndarray,
     labels: np.ndarray | None = None,
+    cluster_ids: np.ndarray | None = None,
     quantization_us: int = DEFAULT_QUANTIZATION_US,
     extra_meta: dict[str, Any] | None = None,
 ) -> int:
     """Write a spike train to a Blosc directory shard.
+
+    Output is compatible with ``ibl_ai_agent_spike_shard_v2`` and can be
+    loaded directly by ``ibl-ai-agent``'s ``load_spike_shard``.
 
     Parameters
     ----------
@@ -60,11 +79,17 @@ def write_blosc(
     times_seconds : np.ndarray
         Sorted event times in seconds.
     labels : np.ndarray, optional
-        Per-event integer label (e.g. unit/cluster id), same length as `times_seconds`.
+        Per-event dense cluster index (0..N-1), same length as `times_seconds`.
+        Stored as ``spike_clusters`` in the shard.
+    cluster_ids : np.ndarray, optional
+        Original cluster IDs (e.g. kilosort integers), length N.  When provided
+        alongside ``labels``, also writes ``cluster_ids`` and
+        ``cluster_spike_counts`` arrays so that label *i* maps to
+        ``cluster_ids[i]``.  Requires ``labels`` to be set.
     quantization_us : int
         Tick size in microseconds.
     extra_meta : dict, optional
-        Extra fields merged into `meta.json` (e.g. `source`, `recording_id`).
+        Extra fields merged into ``meta.json`` (e.g. ``pid``, ``eid``).
 
     Returns
     -------
@@ -73,7 +98,7 @@ def write_blosc(
     """
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
-    arrays, meta = _build_arrays(times_seconds, labels, quantization_us)
+    arrays, meta = _build_arrays(times_seconds, labels, quantization_us, cluster_ids)
     meta = {**meta, **(extra_meta or {})}
     manifest: dict[str, Any] = dict(meta)
     manifest["arrays"] = {}
@@ -165,7 +190,10 @@ def read_zarr(path: Path, *, group: str | None = None) -> dict[str, Any]:
     root = zarr.open_group(str(path), mode="r")
     target = root[group] if group else root
     meta = dict(target.attrs)
-    arrays = {"event_times_delta_ticks": np.asarray(target["event_times_delta_ticks"][:])}
+    arrays = {"spike_times_delta_ticks": np.asarray(target["spike_times_delta_ticks"][:])}
     if meta.get("has_labels"):
-        arrays["event_labels"] = np.asarray(target["event_labels"][:])
+        arrays["spike_clusters"] = np.asarray(target["spike_clusters"][:])
+    if meta.get("has_cluster_ids"):
+        arrays["cluster_ids"] = np.asarray(target["cluster_ids"][:])
+        arrays["cluster_spike_counts"] = np.asarray(target["cluster_spike_counts"][:])
     return _restore(arrays, meta)
